@@ -36,7 +36,6 @@ export default function SeccionDetallePage() {
   const seccionId = params.seccionId as string;
 
   const [seccion, setSeccion] = useState<any>(null);
-  // --- USAMOS LOS TIPOS EN useState ---
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [evaluaciones, setEvaluaciones] = useState<Evaluacion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,7 +114,8 @@ export default function SeccionDetallePage() {
           <EstudiantesLista 
             estudiantes={estudiantes} 
             onEliminarEstudiante={handleEliminarEstudiante}
-            onEditarEstudiante={(student) => setEditingStudent(student)}
+            // --- AQUÍ ESTÁ LA CORRECCIÓN CLAVE ---
+            onEditarEstudiante={(student: Estudiante) => setEditingStudent(student)}
           />
         </section>
         <section>
@@ -128,7 +128,8 @@ export default function SeccionDetallePage() {
           <hr style={{ margin: '1.5rem 0' }} />
           <EvaluacionesLista 
             evaluaciones={evaluaciones}
-            onEditarEstudiante={(evaluation) => setEditingEvaluation(evaluation)}
+            // --- Y AQUÍ TAMBIÉN ---
+            onEditarEvaluacion={(evaluation: Evaluacion) => setEditingEvaluation(evaluation)}
             onEliminarEvaluacion={handleEliminarEvaluacion}
           />
         </section>
