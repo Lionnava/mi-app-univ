@@ -1,5 +1,6 @@
 // app/secciones/[seccionId]/page.tsx
 'use client';
+
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -10,7 +11,7 @@ import type { Seccion, Estudiante, Evaluacion } from '@/types';
 
 // Componentes
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Modal from '@/components/Modal';
 import EstudianteForm from '@/components/EstudianteForm';
 import EstudiantesLista from '@/components/EstudiantesLista';
@@ -23,6 +24,7 @@ export default function SeccionDetallePage() {
   const router = useRouter();
   const seccionId = params.seccionId as string;
 
+  // Estados fuertemente tipados
   const [seccion, setSeccion] = useState<Seccion | null>(null);
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [evaluaciones, setEvaluaciones] = useState<Evaluacion[]>([]);
@@ -30,9 +32,53 @@ export default function SeccionDetallePage() {
   const [editingStudent, setEditingStudent] = useState<Estudiante | null>(null);
   const [editingEvaluation, setEditingEvaluation] = useState<Evaluacion | null>(null);
 
-  // ... (todas las funciones fetch y handlers son las mismas y ya están bien tipadas)
+  // --- FUNCIONES DE CARGA Y MANEJO DE DATOS ---
+  const fetchEstudiantes = useCallback(async () => {
+    if (!seccionId) return;
+    const { data, error } = await supabase.from('estudiantes').select('*').eq('id_seccion', seccionId).order('apellido', { ascending: true });
+    if (error) console.error('Error cargando estudiantes:', error);
+    else setEstudiantes(data || []);
+  }, [seccionId]);
+  
+  const fetchEvaluaciones = useCallback(async () => {
+    if (!seccionId) return;
+    const { data, error } = await supabase.from('evaluaciones').select('*').eq('id_seccion', seccionId).order('created_at', { ascending: true });
+    if (error) console.error('Error cargando evaluaciones:', error);
+    else setEvaluaciones(data || []);
+  }, [seccionId]);
 
-  useEffect(() => { /* ... */ }, [seccionId, router, fetchEstudiantes, fetchEvaluaciones]);
+  const handleEliminarEstudiante = async (estudianteId: string) => {
+    const { error } = await supabase.from('estudiantes').delete().eq('id', estudianteId);
+    if (error) alert(`Error al eliminar: ${error.message}`);
+    else fetchEstudiantes();
+  };
+  const handleEstudianteFormSubmit = () => { fetchEstudiantes(); setEditingStudent(null); };
+  const handleEliminarEvaluacion = async (evaluacionId: string) => {
+    const { error } = await supabase.from('evaluaciones').delete().eq('id', evaluacionId);
+    if (error) alert(`Error al eliminar: ${error.message}`);
+    else fetchEvaluaciones();
+  };
+  const handleEvaluacionFormSubmit = () => { fetchEvaluaciones(); setEditingEvaluation(null); };
+
+  useEffect(() => {
+    if (!seccionId) return;
+    const checkUserAndFetchAllData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { router.push('/'); return; }
+        const { data: seccionData } = await supabase.from('secciones').select('*').eq('id', seccionId).single();
+        if (seccionData) {
+          setSeccion(seccionData);
+          await Promise.all([ fetchEstudiantes(), fetchEvaluaciones() ]);
+        }
+      } catch (error) {
+        console.error("Error al cargar los datos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkUserAndFetchAllData();
+  }, [seccionId, router, fetchEstudiantes, fetchEvaluaciones]);
 
   const totalPonderacionActual = evaluaciones.reduce((sum, item) => sum + item.ponderacion, 0);
 
@@ -92,14 +138,18 @@ export default function SeccionDetallePage() {
       </div>
 
       <Modal isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} title="Editar Estudiante">
-        <EstudianteForm initialData={editingStudent} onFormSubmit={handleEstudianteFormSubmit} />
+        <EstudianteForm 
+          initialData={editingStudent} 
+          onFormSubmit={handleEstudianteFormSubmit} 
+        />
       </Modal>
       <Modal isOpen={!!editingEvaluation} onClose={() => setEditingEvaluation(null)} title="Editar Evaluación">
-        <EvaluacionForm initialData={editingEvaluation} onFormSubmit={handleEvaluacionFormSubmit} totalPonderacionActual={totalPonderacionActual}/>
+        <EvaluacionForm 
+          initialData={editingEvaluation} 
+          onFormSubmit={handleEvaluacionFormSubmit}
+          totalPonderacionActual={totalPonderacionActual}
+        />
       </Modal>
     </div>
   );
 }
-
-// Re-añado las funciones completas por seguridad
-// ... (pegar aquí todo el bloque de funciones desde 'fetchEstudiantes' hasta 'useEffect')
