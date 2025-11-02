@@ -1,50 +1,25 @@
-// components/Modal.js
+// components/Modal.tsx
 'use client';
+import React from 'react'; // Importamos React para usar ReactNode
 
-// Un componente de Modal simple y reutilizable
-export default function Modal({ isOpen, onClose, title, children }) {
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}
+
+export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
   if (!isOpen) {
     return null;
   }
 
-  const modalOverlayStyle = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  };
-
-  const modalContentStyle = {
-    backgroundColor: 'white',
-    padding: '20px',
-    borderRadius: '8px',
-    width: '90%',
-    maxWidth: '500px',
-    position: 'relative',
-  };
-
-  const closeButtonStyle = {
-    position: 'absolute',
-    top: '10px',
-    right: '10px',
-    background: 'transparent',
-    border: 'none',
-    fontSize: '1.5rem',
-    cursor: 'pointer',
-  };
-
+  // ... (el JSX del modal es el mismo, no necesita cambios)
   return (
-    <div style={modalOverlayStyle} onClick={onClose}>
-      <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
-        <button style={closeButtonStyle} onClick={onClose}>&times;</button>
-        <h2>{title}</h2>
-        <hr />
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" onClick={onClose}>
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative" onClick={(e) => e.stopPropagation()}>
+        <button className="absolute top-2 right-4 text-2xl text-gray-500 hover:text-gray-800" onClick={onClose}>&times;</button>
+        <h2 className="text-xl font-bold mb-4">{title}</h2>
         {children}
       </div>
     </div>

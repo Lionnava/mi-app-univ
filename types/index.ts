@@ -1,10 +1,13 @@
 // types/index.ts
+import { User } from '@supabase/supabase-js';
+
 export type Estudiante = {
   id: string;
   nombre: string;
   apellido: string;
   cedula: string;
   id_seccion: string;
+  created_at: string;
 };
 
 export type Evaluacion = {
@@ -12,6 +15,7 @@ export type Evaluacion = {
   nombre_evaluacion: string;
   ponderacion: number;
   id_seccion: string;
+  created_at: string;
 };
 
 export type Seccion = {
@@ -21,4 +25,7 @@ export type Seccion = {
   trayecto: number;
   trimestre: number;
   user_id: string;
+  created_at: string;
 };
+
+export type AppUser = User;
