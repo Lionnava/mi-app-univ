@@ -17,16 +17,9 @@ import EstudiantesLista from '@/components/EstudiantesLista';
 import EvaluacionForm from '@/components/EvaluacionForm';
 import EvaluacionesLista from '@/components/EvaluacionesLista';
 import ConsolidadoNotas from '@/components/ConsolidadoNotas';
-import HorarioForm from '@/components/HorarioForm'; // Importamos el formulario del horario
+import HorarioForm from '@/components/HorarioForm';
 
-// Definimos un tipo para los bloques de horario
-type BloqueHorario = {
-    id: string;
-    dia_semana: number;
-    hora_inicio: string;
-    hora_fin: string;
-    aula: string;
-};
+type BloqueHorario = { id: string; dia_semana: number; hora_inicio: string; hora_fin: string; aula: string; };
 
 export default function SeccionDetallePage() {
   const params = useParams();
@@ -41,7 +34,6 @@ export default function SeccionDetallePage() {
   const [editingStudent, setEditingStudent] = useState<Estudiante | null>(null);
   const [editingEvaluation, setEditingEvaluation] = useState<Evaluacion | null>(null);
 
-  // --- Funciones de Carga de Datos ---
   const fetchEstudiantes = useCallback(async () => { /* ... */ }, [seccionId]);
   const fetchEvaluaciones = useCallback(async () => { /* ... */ }, [seccionId]);
   const fetchHorario = useCallback(async () => {
@@ -51,7 +43,6 @@ export default function SeccionDetallePage() {
     else setHorario(data || []);
   }, [seccionId]);
 
-  // --- Handlers ---
   const handleEliminarEstudiante = async (estudianteId: string) => { /* ... */ };
   const handleEstudianteFormSubmit = () => { fetchEstudiantes(); setEditingStudent(null); };
   const handleEliminarEvaluacion = async (evaluacionId: string) => { /* ... */ };
@@ -98,7 +89,7 @@ export default function SeccionDetallePage() {
             <EstudiantesLista 
               estudiantes={estudiantes} 
               onEliminarEstudiante={handleEliminarEstudiante}
-              onEditarEstudiante={(student: Estudiante) => setEditingStudent(student)}
+              onEditarEstudiante={(student) => setEditingStudent(student)}
             />
           </CardContent>
         </Card>
@@ -112,7 +103,7 @@ export default function SeccionDetallePage() {
                 />
                 <EvaluacionesLista 
                     evaluaciones={evaluaciones}
-                    onEditarEvaluacion={(evaluation: Evaluacion) => setEditingEvaluation(evaluation)}
+                    onEditarEvaluacion={(evaluation) => setEditingEvaluation(evaluation)}
                     onEliminarEvaluacion={handleEliminarEvaluacion}
                 />
             </CardContent>
@@ -127,8 +118,7 @@ export default function SeccionDetallePage() {
           totalPonderado={totalPonderacionActual}
         />
       </div>
-
-      {/* --- SECCIÓN DEL HORARIO (COMPLETA) --- */}
+      
       <div className="mt-8">
         <Card>
             <CardHeader><CardTitle>Horario de la Sección</CardTitle></CardHeader>
@@ -141,4 +131,27 @@ export default function SeccionDetallePage() {
                             {horario.map(bloque => (
                                 <div key={bloque.id} className="flex justify-between items-center p-3 border-b last:border-b-0">
                                     <div className="flex flex-col">
-                                        <span c
+                                        <span className="font-medium">{diasSemana[bloque.dia_semana - 1]}</span>
+                                        <span className="text-sm text-muted-foreground">{bloque.hora_inicio.substring(0,5)} - {bloque.hora_fin.substring(0,5)}</span>
+                                    </div>
+                                    <span className="font-semibold">Aula: {bloque.aula}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-center text-muted-foreground py-4">No hay bloques de horario asignados.</p>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+      </div>
+
+      <Modal isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} title="Editar Estudiante">
+        <EstudianteForm initialData={editingStudent} onFormSubmit={handleEstudianteFormSubmit} />
+      </Modal>
+      <Modal isOpen={!!editingEvaluation} onClose={() => setEditingEvaluation(null)} title="Editar Evaluación">
+        <EvaluacionForm initialData={editingEvaluation} onFormSubmit={handleEvaluacionFormSubmit} totalPonderacionActual={totalPonderacionActual}/>
+      </Modal>
+    </div>
+  );
+}
