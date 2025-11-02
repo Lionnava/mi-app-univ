@@ -1,44 +1,60 @@
-// components/EvaluacionForm.js
+// components/EvaluacionForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import styles from './Form.module.css';
+import { supabase } from '@/lib/supabaseClient';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import type { Evaluacion } from '@/types'; // Importamos nuestro tipo
 
-// Ahora el formulario es más flexible y soporta modo edición
-export default function EvaluacionForm({ seccionId, onFormSubmit, initialData = null, totalPonderacionActual = 0 }) {
+// Definimos las props que el componente espera
+interface EvaluacionFormProps {
+  seccionId?: string;
+  onFormSubmit: () => void;
+  initialData?: Evaluacion | null; // CORRECCIÓN: Aceptamos Evaluacion | null
+  totalPonderacionActual?: number;
+}
+
+export default function EvaluacionForm({ seccionId, onFormSubmit, initialData = null, totalPonderacionActual = 0 }: EvaluacionFormProps) {
   const [formData, setFormData] = useState({
     nombre_evaluacion: '',
     ponderacion: '',
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  
   const isEditMode = !!initialData;
 
   useEffect(() => {
     if (initialData) {
       setFormData({
         nombre_evaluacion: initialData.nombre_evaluacion,
-        ponderacion: initialData.ponderacion,
+        ponderacion: String(initialData.ponderacion), // Aseguramos que sea string para el input
       });
+    } else {
+      setFormData({ nombre_evaluacion: '', ponderacion: '' });
     }
   }, [initialData]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
-
+    
     const nuevaPonderacion = parseInt(formData.ponderacion);
-    const ponderacionAnterior = isEditMode ? initialData.ponderacion : 0;
+    if (isNaN(nuevaPonderacion)) {
+        setMessage('La ponderación debe ser un número.');
+        setLoading(false);
+        return;
+    }
+
+    const ponderacionAnterior = isEditMode && initialData ? initialData.ponderacion : 0;
     const totalSinPonderacionAnterior = totalPonderacionActual - ponderacionAnterior;
 
-    // Validación mejorada para modo edición
     if (totalSinPonderacionAnterior + nuevaPonderacion > 100) {
       setMessage(`Error: El total (${totalSinPonderacionAnterior + nuevaPonderacion}%) excedería el 100%.`);
       setLoading(false);
@@ -47,30 +63,24 @@ export default function EvaluacionForm({ seccionId, onFormSubmit, initialData = 
 
     try {
       let error;
-      if (isEditMode) {
-        ({ error } = await supabase
-          .from('evaluaciones')
-          .update({ nombre_evaluacion: formData.nombre_evaluacion, ponderacion: nuevaPonderacion })
-          .eq('id', initialData.id));
-      } else {
-        ({ error } = await supabase.from('evaluaciones').insert({
+      const dataToSubmit = {
           nombre_evaluacion: formData.nombre_evaluacion,
-          ponderacion: nuevaPonderacion,
-          id_seccion: seccionId,
-        }));
+          ponderacion: nuevaPonderacion
+      };
+
+      if (isEditMode && initialData) {
+        ({ error } = await supabase.from('evaluaciones').update(dataToSubmit).eq('id', initialData.id));
+      } else {
+        if (!seccionId) throw new Error("ID de sección es requerido para crear.");
+        ({ error } = await supabase.from('evaluaciones').insert({ ...dataToSubmit, id_seccion: seccionId }));
       }
 
       if (error) throw error;
 
       setMessage(isEditMode ? '¡Evaluación actualizada!' : '¡Evaluación creada!');
-      if (!isEditMode) {
-        setFormData({ nombre_evaluacion: '', ponderacion: '' });
-      }
+      setTimeout(() => onFormSubmit(), 1000);
 
-      if (onFormSubmit) {
-        onFormSubmit();
-      }
-    } catch (error) {
+    } catch (error: any) {
       setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
@@ -78,22 +88,21 @@ export default function EvaluacionForm({ seccionId, onFormSubmit, initialData = 
   };
 
   return (
-    <section className={styles.formContainer}>
-      <h4>{isEditMode ? 'Editar Evaluación' : 'Crear Nueva Evaluación'}</h4>
-      <form onSubmit={handleSubmit}>
-        <div className={styles.formGroup}>
-          <label htmlFor="nombre_evaluacion" className={styles.label}>Nombre de la Evaluación:</label>
-          <input id="nombre_evaluacion" name="nombre_evaluacion" value={formData.nombre_evaluacion} onChange={handleChange} required className={styles.input} />
-        </div>
-        <div className={styles.formGroup}>
-          <label htmlFor="ponderacion" className={styles.label}>Ponderación (%):</label>
-          <input id="ponderacion" name="ponderacion" type="number" min="1" max="100" value={formData.ponderacion} onChange={handleChange} required className={styles.input} placeholder="Ej: 25" />
-        </div>
-        <button type="submit" disabled={loading} className={styles.button}>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="nombre_evaluacion">Nombre de la Evaluación</Label>
+        <Input id="nombre_evaluacion" name="nombre_evaluacion" value={formData.nombre_evaluacion} onChange={handleChange} required />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="ponderacion">Ponderación (%)</Label>
+        <Input id="ponderacion" name="ponderacion" type="number" min="1" max="100" value={formData.ponderacion} onChange={handleChange} required placeholder="Ej: 25" />
+      </div>
+      <div className="flex justify-end items-center gap-4">
+        {message && <p className="text-sm text-muted-foreground">{message}</p>}
+        <Button type="submit" disabled={loading}>
           {loading ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Evaluación')}
-        </button>
-        {message && <p className={styles.message}>{message}</p>}
-      </form>
-    </section>
+        </Button>
+      </div>
+    </form>
   );
 }
