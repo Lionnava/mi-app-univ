@@ -6,33 +6,30 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
-// Definimos un tipo para nuestros estudiantes para que TypeScript esté contento
+// Definimos un tipo para nuestros estudiantes
 type Estudiante = {
   id: string;
   nombre: string;
   apellido: string;
   cedula: string;
-  // ... cualquier otro campo que tengas
 };
 
 export default function AsistenciaPage() {
   const params = useParams();
   const router = useRouter();
-  const seccionId = params.seccionId as string; // Aseguramos a TS que seccionId es un string
+  const seccionId = params.seccionId as string;
 
   const [seccion, setSeccion] = useState<any>(null);
-  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]); // Usamos nuestro nuevo tipo
+  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [asistencias, setAsistencias] = useState<Record<string, string>>({}); // { [estudianteId]: estado }
+  const [asistencias, setAsistencias] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  // --- AÑADIMOS LOS TIPOS A LOS PARÁMETROS ---
   const fetchAsistencias = useCallback(async (currentFecha: string, currentEstudiantes: Estudiante[]) => {
     if (!currentFecha || currentEstudiantes.length === 0) {
       setAsistencias({});
       return;
     }
-    
     const { data, error } = await supabase
       .from('asistencias')
       .select('id_estudiante, estado')
@@ -43,7 +40,9 @@ export default function AsistenciaPage() {
       console.error("Error cargando asistencias:", error);
     } else {
       const asistenciasMap = (data || []).reduce((acc: Record<string, string>, item) => {
-        acc[item.id_estudiante] = item.estado;
+        if (item.id_estudiante && item.estado) {
+          acc[item.id_estudiante] = item.estado;
+        }
         return acc;
       }, {});
       setAsistencias(asistenciasMap);
@@ -75,30 +74,30 @@ export default function AsistenciaPage() {
     fetchInitialData();
   }, [seccionId, router, fecha, fetchAsistencias]);
 
-  // ... (El resto del código no necesita cambios)
-  
+  useEffect(() => {
+    if (!loading) {
+      fetchAsistencias(fecha, estudiantes);
+    }
+  }, [fecha, estudiantes, loading, fetchAsistencias]);
+
   const handleSetAsistencia = async (estudianteId: string, estado: string) => {
     setAsistencias(prev => ({ ...prev, [estudianteId]: estado }));
-    await supabase.from('asistencias').upsert({
+    const { error } = await supabase.from('asistencias').upsert({
       id_estudiante: estudianteId,
       fecha: fecha,
       estado: estado,
     }, { onConflict: 'id_estudiante, fecha' });
+    if(error){
+      console.error(error);
+      alert('Error al guardar la asistencia.');
+    }
   };
   
   if (loading) return <div>Cargando...</div>;
   if (!seccion) return <div><h2>Sección no encontrada</h2><Link href="/dashboard">← Volver</Link></div>;
 
+  // ESTE ES EL ÚNICO Y CORRECTO BLOQUE RETURN
   return (
-    <div className="container">
-      <nav style={{ marginBottom: '1rem' }}><Link href={`/secciones/${seccionId}`}>← Volver a la Gestión de la Sección</Link></nav>
-      {/* ... (El resto del JSX no cambia) */}
-    </div>
-  );
-}
-
-// Para cumplir con la directiva, aquí está el JSX completo
-return (
     <div className="container">
       <nav style={{ marginBottom: '1rem' }}><Link href={`/secciones/${seccionId}`}>← Volver a la Gestión de la Sección</Link></nav>
       <header>
@@ -127,3 +126,4 @@ return (
       </ul>
     </div>
   );
+}
