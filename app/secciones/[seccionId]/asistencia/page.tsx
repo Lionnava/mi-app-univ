@@ -1,4 +1,4 @@
-// app/secciones/[seccionId]/asistencia/page.js
+// app/secciones/[seccionId]/asistencia/page.tsx
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -6,28 +6,48 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
+// Definimos un tipo para nuestros estudiantes para que TypeScript esté contento
+type Estudiante = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  cedula: string;
+  // ... cualquier otro campo que tengas
+};
+
 export default function AsistenciaPage() {
   const params = useParams();
   const router = useRouter();
-  const seccionId = params.seccionId;
+  const seccionId = params.seccionId as string; // Aseguramos a TS que seccionId es un string
 
-  const [seccion, setSeccion] = useState(null);
-  const [estudiantes, setEstudiantes] = useState([]);
+  const [seccion, setSeccion] = useState<any>(null);
+  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]); // Usamos nuestro nuevo tipo
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [asistencias, setAsistencias] = useState({});
+  const [asistencias, setAsistencias] = useState<Record<string, string>>({}); // { [estudianteId]: estado }
   const [loading, setLoading] = useState(true);
 
-  const fetchAsistencias = useCallback(async (currentFecha, currentEstudiantes) => {
+  // --- AÑADIMOS LOS TIPOS A LOS PARÁMETROS ---
+  const fetchAsistencias = useCallback(async (currentFecha: string, currentEstudiantes: Estudiante[]) => {
     if (!currentFecha || currentEstudiantes.length === 0) {
       setAsistencias({});
       return;
     }
-    const { data } = await supabase.from('asistencias').select('id_estudiante, estado').eq('fecha', currentFecha).in('id_estudiante', currentEstudiantes.map(e => e.id));
-    const asistenciasMap = (data || []).reduce((acc, item) => {
-      acc[item.id_estudiante] = item.estado;
-      return acc;
-    }, {});
-    setAsistencias(asistenciasMap);
+    
+    const { data, error } = await supabase
+      .from('asistencias')
+      .select('id_estudiante, estado')
+      .eq('fecha', currentFecha)
+      .in('id_estudiante', currentEstudiantes.map(e => e.id));
+    
+    if (error) {
+      console.error("Error cargando asistencias:", error);
+    } else {
+      const asistenciasMap = (data || []).reduce((acc: Record<string, string>, item) => {
+        acc[item.id_estudiante] = item.estado;
+        return acc;
+      }, {});
+      setAsistencias(asistenciasMap);
+    }
   }, []);
 
   useEffect(() => {
@@ -37,11 +57,12 @@ export default function AsistenciaPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { router.push('/'); return; }
+
         const { data: seccionData } = await supabase.from('secciones').select('*').eq('id', seccionId).single();
         if (seccionData) {
           setSeccion(seccionData);
           const { data: estudiantesData } = await supabase.from('estudiantes').select('*').eq('id_seccion', seccionId).order('apellido');
-          const studentList = estudiantesData || [];
+          const studentList: Estudiante[] = estudiantesData || [];
           setEstudiantes(studentList);
           await fetchAsistencias(fecha, studentList);
         }
@@ -54,13 +75,9 @@ export default function AsistenciaPage() {
     fetchInitialData();
   }, [seccionId, router, fecha, fetchAsistencias]);
 
-  useEffect(() => {
-    if (!loading) {
-      fetchAsistencias(fecha, estudiantes);
-    }
-  }, [fecha, estudiantes, loading, fetchAsistencias]);
-
-  const handleSetAsistencia = async (estudianteId, estado) => {
+  // ... (El resto del código no necesita cambios)
+  
+  const handleSetAsistencia = async (estudianteId: string, estado: string) => {
     setAsistencias(prev => ({ ...prev, [estudianteId]: estado }));
     await supabase.from('asistencias').upsert({
       id_estudiante: estudianteId,
@@ -73,6 +90,15 @@ export default function AsistenciaPage() {
   if (!seccion) return <div><h2>Sección no encontrada</h2><Link href="/dashboard">← Volver</Link></div>;
 
   return (
+    <div className="container">
+      <nav style={{ marginBottom: '1rem' }}><Link href={`/secciones/${seccionId}`}>← Volver a la Gestión de la Sección</Link></nav>
+      {/* ... (El resto del JSX no cambia) */}
+    </div>
+  );
+}
+
+// Para cumplir con la directiva, aquí está el JSX completo
+return (
     <div className="container">
       <nav style={{ marginBottom: '1rem' }}><Link href={`/secciones/${seccionId}`}>← Volver a la Gestión de la Sección</Link></nav>
       <header>
@@ -101,4 +127,3 @@ export default function AsistenciaPage() {
       </ul>
     </div>
   );
-}
