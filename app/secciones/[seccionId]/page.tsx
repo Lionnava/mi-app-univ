@@ -1,4 +1,4 @@
-// app/secciones/[seccionId]/page.js
+// app/secciones/[seccionId]/page.tsx
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -14,20 +14,35 @@ import EvaluacionForm from '@/components/EvaluacionForm';
 import EvaluacionesLista from '@/components/EvaluacionesLista';
 import ConsolidadoNotas from '@/components/ConsolidadoNotas';
 
+// --- DEFINICIÓN DE TIPOS ---
+type Estudiante = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  cedula: string;
+  id_seccion: string;
+};
+
+type Evaluacion = {
+  id: string;
+  nombre_evaluacion: string;
+  ponderacion: number;
+  id_seccion: string;
+};
+
 export default function SeccionDetallePage() {
   const params = useParams();
   const router = useRouter();
-  // Leemos el parámetro `seccionId` que coincide con el nombre de la carpeta
-  const seccionId = params.seccionId; 
+  const seccionId = params.seccionId as string;
 
-  const [seccion, setSeccion] = useState(null);
-  const [estudiantes, setEstudiantes] = useState([]);
-  const [evaluaciones, setEvaluaciones] = useState([]);
+  const [seccion, setSeccion] = useState<any>(null);
+  // --- USAMOS LOS TIPOS EN useState ---
+  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
+  const [evaluaciones, setEvaluaciones] = useState<Evaluacion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingStudent, setEditingStudent] = useState(null);
-  const [editingEvaluation, setEditingEvaluation] = useState(null);
+  const [editingStudent, setEditingStudent] = useState<Estudiante | null>(null);
+  const [editingEvaluation, setEditingEvaluation] = useState<Evaluacion | null>(null);
 
-  // --- FUNCIONES MEMORIZADAS CON useCallback ---
   const fetchEstudiantes = useCallback(async () => {
     if (!seccionId) return;
     const { data, error } = await supabase.from('estudiantes').select('*').eq('id_seccion', seccionId).order('apellido', { ascending: true });
@@ -42,26 +57,21 @@ export default function SeccionDetallePage() {
     else setEvaluaciones(data || []);
   }, [seccionId]);
 
-  // --- Handlers ---
-  const handleEliminarEstudiante = async (estudianteId) => {
+  const handleEliminarEstudiante = async (estudianteId: string) => {
     const { error } = await supabase.from('estudiantes').delete().eq('id', estudianteId);
     if (error) alert(`Error al eliminar: ${error.message}`);
     else fetchEstudiantes();
   };
   const handleEstudianteFormSubmit = () => { fetchEstudiantes(); setEditingStudent(null); };
-  const handleEliminarEvaluacion = async (evaluacionId) => {
+  const handleEliminarEvaluacion = async (evaluacionId: string) => {
     const { error } = await supabase.from('evaluaciones').delete().eq('id', evaluacionId);
     if (error) alert(`Error al eliminar: ${error.message}`);
     else fetchEvaluaciones();
   };
   const handleEvaluacionFormSubmit = () => { fetchEvaluaciones(); setEditingEvaluation(null); };
 
-  // --- EFECTO PRINCIPAL DE CARGA ---
   useEffect(() => {
-    if (!seccionId) {
-        // Si `seccionId` no está disponible en el primer render, no hacemos nada todavía
-        return;
-    }
+    if (!seccionId) return;
     const checkUserAndFetchAllData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -118,7 +128,7 @@ export default function SeccionDetallePage() {
           <hr style={{ margin: '1.5rem 0' }} />
           <EvaluacionesLista 
             evaluaciones={evaluaciones}
-            onEditarEvaluacion={(evaluation) => setEditingEvaluation(evaluation)}
+            onEditarEstudiante={(evaluation) => setEditingEvaluation(evaluation)}
             onEliminarEvaluacion={handleEliminarEvaluacion}
           />
         </section>
