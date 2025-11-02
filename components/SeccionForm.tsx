@@ -1,15 +1,22 @@
-// components/SeccionForm.js
+// components/SeccionForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import type { Seccion } from '@/types'; // Importamos el tipo Seccion
 
-// Importamos los componentes de shadcn que necesita el formulario
+// Importamos los componentes de shadcn
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-export default function SeccionForm({ onFormSubmit, initialData = null }) {
+// Definimos las props que el componente espera
+interface SeccionFormProps {
+  onFormSubmit: () => void;
+  initialData?: Seccion | null; // CORRECCIÓN: Aceptamos Seccion | null
+}
+
+export default function SeccionForm({ onFormSubmit, initialData = null }: SeccionFormProps) {
   const [formData, setFormData] = useState({
     nombre_materia: '',
     codigo_seccion: '',
@@ -18,7 +25,6 @@ export default function SeccionForm({ onFormSubmit, initialData = null }) {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  
   const isEditMode = !!initialData;
 
   useEffect(() => {
@@ -26,19 +32,19 @@ export default function SeccionForm({ onFormSubmit, initialData = null }) {
       setFormData({
         nombre_materia: initialData.nombre_materia || '',
         codigo_seccion: initialData.codigo_seccion || '',
-        trayecto: initialData.trayecto || '',
-        trimestre: initialData.trimestre || '',
+        trayecto: String(initialData.trayecto || ''),
+        trimestre: String(initialData.trimestre || ''),
       });
     } else {
       setFormData({ nombre_materia: '', codigo_seccion: '', trayecto: '', trimestre: '' });
     }
   }, [initialData]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
@@ -52,36 +58,22 @@ export default function SeccionForm({ onFormSubmit, initialData = null }) {
           trimestre: parseInt(formData.trimestre),
       };
 
-      if (isEditMode) {
-        ({ error } = await supabase
-          .from('secciones')
-          .update(dataToSubmit)
-          .eq('id', initialData.id));
+      if (isEditMode && initialData) {
+        ({ error } = await supabase.from('secciones').update(dataToSubmit).eq('id', initialData.id));
       } else {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Debes iniciar sesión para crear una sección.");
-        
-        ({ error } = await supabase.from('secciones').insert({
-          ...dataToSubmit,
-          user_id: user.id,
-        }));
+        ({ error } = await supabase.from('secciones').insert({ ...dataToSubmit, user_id: user.id }));
       }
 
       if (error) throw error;
 
       setMessage(isEditMode ? '¡Sección actualizada!' : '¡Sección creada!');
-      if (!isEditMode) {
-        setFormData({ nombre_materia: '', codigo_seccion: '', trayecto: '', trimestre: '' });
-      }
-
-      // Esperar un momento para que el usuario vea el mensaje antes de cerrar/refrescar
       setTimeout(() => {
-          if (onFormSubmit) {
-            onFormSubmit();
-          }
+        if (onFormSubmit) onFormSubmit();
       }, 1000);
 
-    } catch (error) {
+    } catch (error: any) {
       setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);

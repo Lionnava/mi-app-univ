@@ -1,21 +1,14 @@
 // app/dashboard/page.tsx
 'use client'; 
-
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import type { AppUser, Seccion } from '@/types'; // Importamos los tipos
-
-// Importamos los iconos
+import type { AppUser, Seccion } from '@/types';
 import { Edit, Trash2 } from 'lucide-react'; 
-
-// Importamos los componentes de shadcn/ui
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-// Importamos nuestro componente de formulario
 import SeccionForm from '@/components/SeccionForm'; 
 
 export default function DashboardPage() {
@@ -27,12 +20,8 @@ export default function DashboardPage() {
 
   const cargarSecciones = async () => {
     const { data, error } = await supabase.from('secciones').select('*').order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error cargando secciones:', error);
-      setSecciones([]);
-    } else {
-      setSecciones(data || []);
-    }
+    if (error) { console.error('Error cargando secciones:', error); setSecciones([]); } 
+    else { setSecciones(data || []); }
   };
   
   const handleSignOut = async () => {
@@ -41,13 +30,10 @@ export default function DashboardPage() {
   };
 
   const handleEliminarSeccion = async (seccionId: string, seccionNombre: string) => {
-    if (window.confirm(`¿Seguro que quieres eliminar la sección "${seccionNombre}"? Se borrarán TODOS sus estudiantes, evaluaciones y notas.`)) {
+    if (window.confirm(`¿Seguro que quieres eliminar la sección "${seccionNombre}"?`)) {
         const { error } = await supabase.from('secciones').delete().eq('id', seccionId);
-        if (error) {
-            alert(`Error al eliminar: ${error.message}`);
-        } else {
-            cargarSecciones();
-        }
+        if (error) { alert(`Error al eliminar: ${error.message}`); } 
+        else { cargarSecciones(); }
     }
   };
 
@@ -70,7 +56,7 @@ export default function DashboardPage() {
     checkUserAndLoadData();
   }, [router]);
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Cargando datos del profesor...</div>;
+  if (loading) return <div className="flex justify-center items-center h-screen">Cargando...</div>;
 
   return (
     <div className="p-4 md:p-8"> 
@@ -81,17 +67,11 @@ export default function DashboardPage() {
           <Button variant="outline" onClick={handleSignOut}>Cerrar Sesión</Button>
         </div>
       </header>
-      
       <main>
         <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Crear Nueva Sección</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SeccionForm onFormSubmit={handleSeccionFormSubmit} />
-          </CardContent>
+          <CardHeader><CardTitle>Crear Nueva Sección</CardTitle></CardHeader>
+          <CardContent><SeccionForm onFormSubmit={handleSeccionFormSubmit} /></CardContent>
         </Card>
-        
         <h2 className="text-2xl font-semibold mb-4">Mis Secciones Creadas</h2>
         {secciones.length > 0 ? (
           <div className="grid gap-4">
@@ -105,22 +85,17 @@ export default function DashboardPage() {
                     <CardDescription>Código: {seccion.codigo_seccion} | Trayecto {seccion.trayecto}, Trimestre {seccion.trimestre}</CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="secondary" size="icon" onClick={() => setEditingSection(seccion)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="destructive" size="icon" onClick={() => handleEliminarSeccion(seccion.id, seccion.nombre_materia)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <Button variant="secondary" size="icon" onClick={() => setEditingSection(seccion)}><Edit className="h-4 w-4" /></Button>
+                    <Button variant="destructive" size="icon" onClick={() => handleEliminarSeccion(seccion.id, seccion.nombre_materia)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </CardHeader>
               </Card>
             ))}
           </div>
         ) : (
-          <Card className="text-center p-8"><p>Aún no has creado ninguna sección. ¡Usa el formulario para empezar!</p></Card>
+          <Card className="text-center p-8"><p>Aún no has creado ninguna sección.</p></Card>
         )}
       </main>
-
       <Dialog open={!!editingSection} onOpenChange={(isOpen) => !isOpen && setEditingSection(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Sección</DialogTitle></DialogHeader>
