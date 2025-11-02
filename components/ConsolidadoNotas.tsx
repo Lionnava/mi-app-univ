@@ -7,6 +7,8 @@ import Papa from 'papaparse';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// --- AQUÍ ESTÁ LA CORRECCIÓN CLAVE ---
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { Estudiante, Evaluacion } from '@/types';
 
 interface ConsolidadoNotasProps {
@@ -37,8 +39,12 @@ export default function ConsolidadoNotas({ estudiantes, evaluaciones, nombreSecc
       }
       setLoading(false);
     };
-    fetchNotas();
-  }, [estudiantes]);
+    if(totalPonderado === 100) {
+        fetchNotas();
+    } else {
+        setLoading(false);
+    }
+  }, [estudiantes, totalPonderado]);
 
   const handleSaveNota = async (estudianteId: string, evaluacionId: string, calificacion: string) => {
     const notaNum = parseFloat(calificacion);
@@ -65,24 +71,52 @@ export default function ConsolidadoNotas({ estudiantes, evaluaciones, nombreSecc
     return notaFinal.toFixed(2);
   };
 
-  const handleExportCSV = () => { /* ... (código sin cambios) ... */ };
+  const handleExportCSV = () => {
+    const headers = ['Cedula', 'Apellido', 'Nombre', ...evaluaciones.map(ev => `${ev.nombre_evaluacion} (${ev.ponderacion}%)`), 'Nota Final'];
+    const data = estudiantes.map(estudiante => {
+      const row: Record<string, any> = { 'Cedula': estudiante.cedula, 'Apellido': estudiante.apellido, 'Nombre': estudiante.nombre };
+      evaluaciones.forEach(ev => {
+        const nota = notas[`${estudiante.id}-${ev.id}`] || 0;
+        row[`${ev.nombre_evaluacion} (${ev.ponderacion}%)`] = nota;
+      });
+      row['Nota Final'] = calcularNotaFinal(estudiante.id);
+      return row;
+    });
+    const csv = Papa.unparse({ fields: headers, data: data });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const fecha = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `notas_${nombreSeccion.replace(/\s+/g, '_')}_${fecha}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  if (totalPonderado !== 100) {
+  if (totalPonderado !== 100 && evaluaciones.length > 0) {
     return (
       <Card className="p-8 border-2 border-dashed border-destructive bg-destructive/10 text-center">
-        <h2 className="text-xl font-semibold text-destructive-foreground">Plan de Evaluación Incompleto</h2>
-        <p className="mt-2 text-destructive-foreground/80">
-          El total ponderado es <strong>{totalPonderado}%</strong>. Debe ser <strong>100%</strong> para registrar notas.
-        </p>
+        <CardHeader>
+            <CardTitle className="text-xl font-semibold text-destructive-foreground">Plan de Evaluación Incompleto</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <p className="mt-2 text-destructive-foreground/80">
+            El total ponderado es <strong>{totalPonderado}%</strong>. 
+            <br/>
+            Debe ser exactamente <strong>100%</strong> para poder registrar y calcular las notas finales.
+            </p>
+        </CardContent>
       </Card>
     );
   }
 
   if (estudiantes.length === 0 || evaluaciones.length === 0) {
     return (
-        <div className="text-center text-muted-foreground py-8">
-            <p>Añade estudiantes y evaluaciones para ver el consolidado de notas.</p>
-        </div>
+        <Card className="text-center text-muted-foreground p-8">
+            <p>Añade estudiantes y define un plan de evaluación del 100% para ver el consolidado.</p>
+        </Card>
     );
   }
   
@@ -104,7 +138,7 @@ export default function ConsolidadoNotas({ estudiantes, evaluaciones, nombreSecc
                     {evaluaciones.map(ev => (
                         <TableHead key={ev.id} className="text-center">{ev.nombre_evaluacion} ({ev.ponderacion}%)</TableHead>
                     ))}
-                    <TableHead className="text-center">Nota Final</TableHead>
+                    <TableHead className="text-right font-bold">Nota Final</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -112,16 +146,16 @@ export default function ConsolidadoNotas({ estudiantes, evaluaciones, nombreSecc
                     <TableRow key={estudiante.id}>
                         <TableCell className="font-medium">{estudiante.apellido}, {estudiante.nombre}</TableCell>
                         {evaluaciones.map(evaluacion => (
-                        <TableCell key={evaluacion.id} className="text-center">
+                        <TableCell key={evaluacion.id}>
                             <Input
                             type="number" min="0" max="20" step="0.1"
-                            className="w-20 mx-auto"
+                            className="w-24 mx-auto text-center"
                             defaultValue={notas[`${estudiante.id}-${evaluacion.id}`] || ''}
                             onBlur={(e) => handleSaveNota(estudiante.id, evaluacion.id, e.target.value)}
                             />
                         </TableCell>
                         ))}
-                        <TableCell className="text-center font-bold text-lg">
+                        <TableCell className="text-right font-bold text-lg">
                         {calcularNotaFinal(estudiante.id)}
                         </TableCell>
                     </TableRow>
